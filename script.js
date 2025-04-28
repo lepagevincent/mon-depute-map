@@ -9,7 +9,7 @@ const map = L.map('map', {
     maxZoom: 10,
     zoomSnap: 0.5,
     zoomDelta: 0.5,
-    tap: true,
+    tap: true, // ➔ activation du support mobile
     zoomControl: true
 }).setView([46.8, 2.5], 6);
 
@@ -32,15 +32,15 @@ Papa.parse('data/deputes-active-corrected.csv', {
     delimiter: ';',
     complete: function(results) {
         results.data.forEach(dep => {
-            const departement = dep['departement'].toString().trim().toUpperCase(); 
+            const departement = dep['departement'].toString().trim().padStart(2, '0');  // Ajouter le zéro si nécessaire
             let numCirco = dep['numCirco'];
 
             if (typeof numCirco === 'string' && numCirco.includes('.'))
-                numCirco = numCirco.split('.')[0];
+                numCirco = numCirco.split('.')[0]; // Supprimer le .0
             else if (typeof numCirco === 'number')
                 numCirco = parseInt(numCirco, 10);
 
-            const key = `${departement}-${numCirco}`;
+            const key = `${departement}-${numCirco}`; // Format de la clé avec deux chiffres pour le département
             deputeData[key] = dep;
         });
         loadAllLayers();
@@ -120,10 +120,11 @@ function loadAllLayers() {
         .then(data => {
             circonscriptionsLayer = L.geoJSON(data, {
                 style: feature => {
-                    const dep = feature.properties.dep.padStart(2, '0');  // Ajouter le zéro si nécessaire
+                    const dep = feature.properties.code_dpt || feature.properties.dep;
                     const numCirco = feature.properties.num_circ || feature.properties.circo;
-                    const key = `${dep}-${numCirco}`; // Formater correctement la clé avec deux chiffres pour le département
-                    const depute = deputeData[key]; // Recherche dans le tableau de députés
+                    const key = `${dep.padStart(2, '0')}-${numCirco}`; // Assurer le format correct pour la clé
+
+                    const depute = deputeData[key];
                     let fillColor = '#B0BEC5';
 
                     if (depute && depute.groupeAbrev) {
@@ -144,36 +145,16 @@ function loadAllLayers() {
                         click: (e) => {
                             const dep = feature.properties.code_dpt || feature.properties.dep;
                             const numCirco = feature.properties.num_circ || feature.properties.circo;
-                            const key = `${dep}-${numCirco}`;
+                            const key = `${dep.padStart(2, '0')}-${numCirco}`;
                             const depute = deputeData[key];
 
                             if (depute) {
-                                // Créer un contactSection si les informations existent
-                                let contactSection = '';
-                            
-                                // Vérifier si mail, site, facebook ou twitter existent et afficher
-                                if (depute.mail || depute.siteInternet || depute.facebook || depute.twitter) {
-                                    contactSection = `
-                                        <div style="margin-top:10px; padding:8px; border:1px solid #ccc; border-radius:5px; background:#f9f9f9;">
-                                            <b>Contact :</b><br>
-                                            ${depute.mail ? `✉️ <a href="mailto:${depute.mail}">${depute.mail}</a><br>` : ''}
-                                            ${depute.siteInternet ? `🌐 <a href="${depute.siteInternet}" target="_blank">Site Internet</a><br>` : ''}
-                                            ${depute.facebook ? `📱 <a href="https://www.facebook.com/${depute.facebook}" target="_blank">Facebook</a><br>` : ''}
-                                            ${depute.twitter ? `🐦 <a href="https://x.com/${depute.twitter}" target="_blank">Twitter</a><br>` : ''}
-                                        </div>
-                                    `;
-                                }
-                            
-                                // Contenu principal de la popup
                                 const popupContent = `
                                     <b>Député :</b> ${depute.prenom} ${depute.nom}<br>
                                     <b>Groupe :</b> ${depute.groupe}<br>
-                                    <b>Mandats :</b> ${parseInt(depute.nombreMandats)}<br> <!-- Pas de décimale -->
-                                    <b>Participation :</b> ${Math.round(depute.scoreParticipation * 100)}% <!-- Score arrondi et en pourcentage -->
-                                    ${contactSection} <!-- Contact info ajoutée ici -->
+                                    <b>Mandats :</b> ${depute.nombreMandats}<br>
+                                    <b>Participation :</b> ${depute.scoreParticipation}%
                                 `;
-                                
-                                // Afficher la popup
                                 layer.bindPopup(popupContent).openPopup();
                             } else {
                                 layer.bindPopup("Pas d'info pour cette circo.").openPopup();
@@ -275,42 +256,11 @@ homeButton.onAdd = function(map) {
         hideLayer(departementsLayer);
         hideLayer(circonscriptionsLayer);
         forceResetHover();
-        map.removeControl(legend);
     };
     return div;
 };
 
 homeButton.addTo(map);
-
-// Légende politique
-let legend = L.control({ position: 'bottomright' });
-
-legend.onAdd = function (map) {
-    let div = L.DomUtil.create('div', 'info legend');
-    const parties = {
-        'RN': '#0055A4',
-        'LFI': '#D32F2F',
-        'SOC': '#F06292',
-        'ECOS': '#4CAF50',
-        'HOR': '#FF9800',
-        'DEM': '#FFEB3B',
-        'DR': '#1A237E',
-        'EPR': '#6D4C41',
-        'GDR': '#C62828',
-        'LIOT': '#8D6E63',
-        'NI': '#90A4AE',
-        'UDR': '#64B5F6'
-    };
-
-    for (const [party, color] of Object.entries(parties)) {
-        div.innerHTML += `
-            <i style="background:${color}; width:18px; height:18px; float:left; margin-right:8px; opacity:0.7;"></i> 
-            ${party}<br>
-        `;
-    }
-
-    return div;
-};
 
 // Zoom dynamique
 map.on('zoomend', function() {
@@ -320,16 +270,13 @@ map.on('zoomend', function() {
         showLayer(regionsLayer);
         hideLayer(departementsLayer);
         hideLayer(circonscriptionsLayer);
-        map.removeControl(legend);
     } else if (currentZoom > 6.5 && currentZoom <= 8.5) {
         hideLayer(regionsLayer);
         showLayer(departementsLayer);
         hideLayer(circonscriptionsLayer);
-        map.removeControl(legend);
     } else {
         hideLayer(regionsLayer);
         hideLayer(departementsLayer);
         showLayer(circonscriptionsLayer);
-        legend.addTo(map);
     }
 });
