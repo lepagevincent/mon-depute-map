@@ -22,8 +22,8 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png
 
 // Stockage
 let deputeData = {};
-let regionsLayer, departementsLayer, circonscriptionsLayer;
-map._lastHighlighted = null;
+let mairesData = {};
+let regionsLayer, departementsLayer, circonscriptionsLayer, communesLayer;
 
 // Charger les données députés
 Papa.parse('data/deputes-active-corrected.csv', {
@@ -47,6 +47,58 @@ Papa.parse('data/deputes-active-corrected.csv', {
     }
 });
 
+// Charger les données des maires
+fetch('data/maires_for_communes_layer.csv')
+    .then(res => res.text())
+    .then(text => {
+        const rows = text.split('\n');
+        const headers = rows[0].split(',');
+
+        rows.slice(1).forEach(row => {
+            const columns = row.split(',');
+            const communeName = columns[0].trim();
+            const codeCommune = columns[1].trim();
+            const nomElu = columns[2].trim();
+            const prenomElu = columns[3].trim();
+            const debutMandat = columns[4].trim();
+
+            mairesData[codeCommune] = {
+                communeName,
+                nomElu,
+                prenomElu,
+                debutMandat
+            };
+        });
+    });
+
+// Fonction pour afficher les informations des élus dans un popup lors du clic sur une commune
+function onEachFeatureCommune(feature, layer) {
+    
+    storeOriginalStyle(layer);
+
+    // Ajouter les événements de survol et de clic
+    layer.on({
+        click: (e) => {                 // Lorsque la commune est cliquée
+            console.log(feature);
+            const codeCommune = feature.properties.code;
+            const maire = mairesData[codeCommune];
+            console.log(maire);
+            if (maire) {
+                const popupContent = `
+                    <b>Commune :</b> ${maire.communeName} <br>
+                    <b>Nom de l'élu :</b> ${maire.nomElu} ${maire.prenomElu} <br>
+                    <b>Date de début du mandat :</b> ${maire.debutMandat} <br>
+                `;
+                layer.bindPopup(popupContent).openPopup();
+            } else {
+                layer.bindPopup("Aucune information sur l'élu disponible.").openPopup();
+            }
+        },
+        mouseover: highlightFeature,   // Lorsque la souris survole la commune
+        mouseout: resetHighlight,      // Lorsque la souris quitte la commune
+    });
+}
+
 // Fonction pour définir la couleur selon le groupe
 function getGroupColor(groupeAbrev) {
     if (!groupeAbrev) return '#B0BEC5';
@@ -69,22 +121,7 @@ function getGroupColor(groupeAbrev) {
     }
 }
 
-function normalizeString(str) {
-    return str.normalize("NFD")                          // Normaliser Unicode pour séparer les caractères accentués
-              .replace(/[\u0300-\u036f]/g, "")            // Retirer les accents
-              .replace(/'/g, '')                          // Supprimer les apostrophes
-              .replace(/\s+/g, '')                        // Supprimer les espaces
-              .replace(/-/g, '');                         // Supprimer les tirets
-}
-
-function normalizeStringDep(str) {
-    return str.normalize("NFD")                          // Normaliser Unicode pour séparer les caractères accentués
-              .replace(/[\u0300-\u036f]/g, "")            // Retirer les accents
-              .replace(/'/g, '')                          // Supprimer les apostrophes
-              .replace(/\s+/g, '')                        // Supprimer les espaces
-}
-
-// Charger toutes les couches
+// Charger toutes les couches (regions, departements, circonscriptions) et gérer les communes
 function loadAllLayers() {
     fetch('data/regions.geojson')
         .then(res => res.json())
@@ -118,7 +155,7 @@ function loadAllLayers() {
                     layer.on({
                         click: () => {
                             resetAllStyles(departementsLayer);
-                            map.flyToBounds(layer.getBounds(), { maxZoom: 10 });
+                            map.flyToBounds(layer.getBounds(), { maxZoom: 9 });
                             hideLayer(departementsLayer);
                             showLayer(circonscriptionsLayer);
                             forceResetHover();
@@ -127,7 +164,7 @@ function loadAllLayers() {
                         mouseout: resetHighlight
                     });
                 }
-            });
+            })
         });
 
     fetch('data/france-circonscriptions-legislatives-2012.geojson')
@@ -172,35 +209,14 @@ function loadAllLayers() {
                             const depute = deputeData[key];
 
                             if (depute) {
-                                // Créer un contactSection si les informations existent
                                 let contactSection = '';
-                            
-                                // Vérifier si mail, site, facebook ou twitter existent et afficher
-                                if (depute.mail || depute.siteInternet || depute.facebook || depute.twitter) {
-                                    contactSection = `
-                                        <div style="margin-top:10px; padding:8px; border:1px solid #ccc; border-radius:5px; background:#f9f9f9;">
-                                            <b>Contact :</b><br>
-                                            ${depute.mail ? `✉️ <a href="mailto:${depute.mail}">${depute.mail}</a><br>` : ''}
-                                            ${depute.siteInternet ? `🌐 <a href="${depute.siteInternet}" target="_blank">Site Internet</a><br>` : ''}
-                                            ${depute.facebook ? `📱 <a href="https://www.facebook.com/${depute.facebook}" target="_blank">Facebook</a><br>` : ''}
-                                            ${depute.twitter ? `🐦 <a href="https://x.com/${depute.twitter}" target="_blank">Twitter</a><br>` : ''}
-                                        </div>
-                                    `;
-                                }
-                            
-                                // Contenu principal de la popup
                                 const popupContent = `
                                     <b>Député :</b> ${depute.prenom} ${depute.nom}<br>
                                     <b>Groupe :</b> ${depute.groupe}<br>
-                                    <b>Mandats :</b> ${parseInt(depute.nombreMandats)}<br> <!-- Pas de décimale -->
-                                    <b>Participation :</b> ${Math.round(depute.scoreParticipation * 100)}% <br><!-- Score arrondi et en pourcentage -->
-                                    ${depute.scoreParticipationSpecialite && depute.scoreParticipationSpecialite !== 0,0 ? `<b>Participation spécialité :</b> ${Math.round(depute.scoreParticipationSpecialite * 100)}%<br>` : ''}
-                                    ${depute.scoreLoyaute && depute.scoreLoyaute !== 0.0 ? `<b>Participation loyauté :</b> ${Math.round(depute.scoreLoyaute * 100)}%<br>` : ''}
-                                    <a href="https://datan.fr/deputes/${normalizeStringDep(depute.departementNom)}-${dep}/depute_${normalizeString(depute.prenom)}-${normalizeString(depute.nom)}" target="_blank">🏛️<b> Fiche du député datan.fr</b></a>
-                                    ${contactSection} <!-- Contact info ajoutée ici -->
+                                    <b>Mandats :</b> ${parseInt(depute.nombreMandats)}<br> 
+                                    <b>Participation :</b> ${Math.round(depute.scoreParticipation * 100)}% <br>
+                                    ${contactSection}
                                 `;
-                                
-                                // Afficher la popup
                                 layer.bindPopup(popupContent).openPopup();
                             } else {
                                 layer.bindPopup("Pas d'info pour cette circo.").openPopup();
@@ -211,6 +227,24 @@ function loadAllLayers() {
                     });
                 }
             });
+        });
+
+    // Charger les données des communes et afficher seulement celles visibles
+    fetch('data/communes-1000m.geojson')
+        .then(res => res.json())
+        .then(data => {
+            communesLayer = L.geoJSON(data, {
+                style: { 
+                    color: "#FF6347",   
+                    weight: 1,          
+                    opacity: 0.7,
+                    fillOpacity: 0.3    
+                },
+                onEachFeature: onEachFeatureCommune
+            })
+        })
+        .catch(error => {
+            console.error("Erreur lors du chargement du fichier GeoJSON des communes:", error);
         });
 }
 
@@ -243,13 +277,6 @@ function resetAllStyles(layerGroup) {
     }
 }
 
-function forceResetHover() {
-    if (map._lastHighlighted) {
-        resetHighlight({ target: map._lastHighlighted });
-        map._lastHighlighted = null;
-    }
-}
-
 // Hover sur une zone
 function highlightFeature(e) {
     const layer = e.target;
@@ -259,7 +286,8 @@ function highlightFeature(e) {
     }
 
     layer.setStyle({
-        fillOpacity: 0.6
+        fillOpacity: 0.4,  
+        weight: 3          
     });
 
     if (!L.Browser.ie && !L.Browser.opera && !L.Browser.edge) {
@@ -282,47 +310,32 @@ function resetHighlight(e) {
     });
 }
 
-// Bouton home
-let homeButton = L.control({ position: 'topleft' });
-
-homeButton.onAdd = function(map) {
-    let div = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
-    div.innerHTML = '🔄';
-    div.style.backgroundColor = 'white';
-    div.style.width = '34px';
-    div.style.height = '34px';
-    div.style.lineHeight = '34px';
-    div.style.textAlign = 'center';
-    div.style.fontSize = '20px';
-    div.style.cursor = 'pointer';
-    
-    div.onclick = function(){
-        map.setView([46.8, 2.5], 6);
-        showLayer(regionsLayer);
-        hideLayer(departementsLayer);
-        hideLayer(circonscriptionsLayer);
-        forceResetHover();
-    };
-    return div;
-};
-
-homeButton.addTo(map);
-
 // Zoom dynamique
 map.on('zoomend', function() {
     const currentZoom = map.getZoom();
+    console.log(currentZoom);
 
-    if (currentZoom <= 6.5) {
+    if (currentZoom <= 6.0) {
         showLayer(regionsLayer);
         hideLayer(departementsLayer);
         hideLayer(circonscriptionsLayer);
-    } else if (currentZoom > 6.5 && currentZoom <= 8.5) {
+        hideLayer(communesLayer);
+    } else if (currentZoom > 6.0 && currentZoom <= 8.0) {
         hideLayer(regionsLayer);
         showLayer(departementsLayer);
         hideLayer(circonscriptionsLayer);
-    } else {
+        hideLayer(communesLayer);
+    } else if (currentZoom >= 8.0 && currentZoom <= 9.0) {
         hideLayer(regionsLayer);
         hideLayer(departementsLayer);
         showLayer(circonscriptionsLayer);
+        hideLayer(communesLayer);
+    } else {
+        hideLayer(regionsLayer);
+        hideLayer(departementsLayer);
+        hideLayer(circonscriptionsLayer);
+        if (!map.hasLayer(communesLayer)) {
+            showLayer(communesLayer); // Charger la couche des communes seulement si elle n'est pas déjà ajoutée
+        }
     }
 });
