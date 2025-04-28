@@ -69,6 +69,14 @@ function getGroupColor(groupeAbrev) {
     }
 }
 
+function normalizeString(str) {
+    return str.normalize("NFD")                          // Normaliser Unicode pour séparer les caractères accentués
+              .replace(/[\u0300-\u036f]/g, "")            // Retirer les accents
+              .replace(/'/g, '')                          // Supprimer les apostrophes
+              .replace(/\s+/g, '')                        // Supprimer les espaces
+              .replace(/-/g, '');                         // Supprimer les tirets
+}
+
 // Charger toutes les couches
 function loadAllLayers() {
     fetch('data/regions.geojson')
@@ -178,7 +186,10 @@ function loadAllLayers() {
                                     <b>Député :</b> ${depute.prenom} ${depute.nom}<br>
                                     <b>Groupe :</b> ${depute.groupe}<br>
                                     <b>Mandats :</b> ${parseInt(depute.nombreMandats)}<br> <!-- Pas de décimale -->
-                                    <b>Participation :</b> ${Math.round(depute.scoreParticipation * 100)}% <!-- Score arrondi et en pourcentage -->
+                                    <b>Participation :</b> ${Math.round(depute.scoreParticipation * 100)}% <br><!-- Score arrondi et en pourcentage -->
+                                    ${depute.scoreParticipationSpecialite && depute.scoreParticipationSpecialite !== 0,0 ? `<b>Participation spécialité :</b> ${Math.round(depute.scoreParticipationSpecialite * 100)}%<br>` : ''}
+                                    ${depute.scoreLoyaute && depute.scoreLoyaute !== 0.0 ? `<b>Participation loyauté :</b> ${Math.round(depute.scoreLoyaute * 100)}%<br>` : ''}
+                                    <a href="https://datan.fr/deputes/${normalizeString(depute.departementNom)}-${dep}/depute_${normalizeString(depute.prenom)}-${normalizeString(depute.nom)}" target="_blank">Voir la fiche du député sur datan.fr</a>
                                     ${contactSection} <!-- Contact info ajoutée ici -->
                                 `;
                                 
