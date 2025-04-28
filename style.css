@@ -11,7 +11,7 @@ html, body {
 
 /* Adapter aussi les popups */
 .leaflet-popup-content-wrapper {
-    max-width: 250px;
+    max-width: 800px;
     font-size: 14px;
 }
 

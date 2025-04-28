@@ -196,7 +196,7 @@ function loadAllLayers() {
                                     <b>Participation :</b> ${Math.round(depute.scoreParticipation * 100)}% <br><!-- Score arrondi et en pourcentage -->
                                     ${depute.scoreParticipationSpecialite && depute.scoreParticipationSpecialite !== 0,0 ? `<b>Participation spécialité :</b> ${Math.round(depute.scoreParticipationSpecialite * 100)}%<br>` : ''}
                                     ${depute.scoreLoyaute && depute.scoreLoyaute !== 0.0 ? `<b>Participation loyauté :</b> ${Math.round(depute.scoreLoyaute * 100)}%<br>` : ''}
-                                    <a href="https://datan.fr/deputes/${normalizeStringDep(depute.departementNom)}-${dep}/depute_${normalizeString(depute.prenom)}-${normalizeString(depute.nom)}" target="_blank">Voir la fiche du député sur datan.fr</a>
+                                    <a href="https://datan.fr/deputes/${normalizeStringDep(depute.departementNom)}-${dep}/depute_${normalizeString(depute.prenom)}-${normalizeString(depute.nom)}" target="_blank">🏛️<b> Fiche du député datan.fr</b></a>
                                     ${contactSection} <!-- Contact info ajoutée ici -->
                                 `;
                                 
