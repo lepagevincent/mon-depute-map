@@ -149,7 +149,6 @@ function loadAllLayers() {
                         click: (e) => {
                             const dep = feature.properties.code_dpt || feature.properties.dep;
                             const numCirco = feature.properties.num_circ || feature.properties.circo;
-                            
                             // Retirer le zéro devant les départements inférieurs à 10
                             const depFormatted = dep.startsWith('0') ? dep.substring(1) : dep; // Si le département commence par 0, on le supprime
             
