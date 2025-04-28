@@ -120,10 +120,10 @@ function loadAllLayers() {
         .then(data => {
             circonscriptionsLayer = L.geoJSON(data, {
                 style: feature => {
-                    const dep = feature.properties.code_dpt || feature.properties.dep;
+                    const dep = feature.properties.dep.padStart(2, '0');  // Ajouter le zéro si nécessaire
                     const numCirco = feature.properties.num_circ || feature.properties.circo;
-                    const key = `${dep}-${numCirco}`;
-                    const depute = deputeData[key];
+                    const key = `${dep}-${numCirco}`; // Formater correctement la clé avec deux chiffres pour le département
+                    const depute = deputeData[key]; // Recherche dans le tableau de députés
                     let fillColor = '#B0BEC5';
 
                     if (depute && depute.groupeAbrev) {
