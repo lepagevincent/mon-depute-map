@@ -14,7 +14,7 @@ const map = L.map('map', {
 }).setView([46.8, 2.5], 6);
 
 // Fond minimaliste
-L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png', {
     attribution: '&copy; OpenStreetMap & CartoDB',
     subdomains: 'abcd',
     maxZoom: 19
@@ -149,6 +149,7 @@ function loadAllLayers() {
                         click: (e) => {
                             const dep = feature.properties.code_dpt || feature.properties.dep;
                             const numCirco = feature.properties.num_circ || feature.properties.circo;
+
                             // Retirer le zéro devant les départements inférieurs à 10
                             const depFormatted = dep.startsWith('0') ? dep.substring(1) : dep; // Si le département commence par 0, on le supprime
             
