@@ -32,7 +32,7 @@ Papa.parse('data/deputes-active-corrected.csv', {
     delimiter: ';',
     complete: function(results) {
         results.data.forEach(dep => {
-            const departement = dep['departement'].toString().trim().padStart(2, '0');  // Ajouter le zéro si nécessaire
+            const departement = dep['departement'].toString().trim();  // Pas de zero ajouté ici
             let numCirco = dep['numCirco'];
 
             if (typeof numCirco === 'string' && numCirco.includes('.'))
@@ -40,7 +40,7 @@ Papa.parse('data/deputes-active-corrected.csv', {
             else if (typeof numCirco === 'number')
                 numCirco = parseInt(numCirco, 10);
 
-            const key = `${departement}-${numCirco}`; // Format de la clé avec deux chiffres pour le département
+            const key = `${departement}-${numCirco}`; // Pas de zéro ajouté pour le département
             deputeData[key] = dep;
         });
         loadAllLayers();
@@ -122,7 +122,11 @@ function loadAllLayers() {
                 style: feature => {
                     const dep = feature.properties.code_dpt || feature.properties.dep;
                     const numCirco = feature.properties.num_circ || feature.properties.circo;
-                    const key = `${dep.padStart(2, '0')}-${numCirco}`; // Assurer le format correct pour la clé
+                    
+                    // Retirer le zéro devant les départements inférieurs à 10
+                    const depFormatted = dep.startsWith('0') ? dep.substring(1) : dep; // Si le département commence par 0, on le supprime
+    
+                    const key = `${depFormatted}-${numCirco}`;
 
                     const depute = deputeData[key];
                     let fillColor = '#B0BEC5';
@@ -145,16 +149,40 @@ function loadAllLayers() {
                         click: (e) => {
                             const dep = feature.properties.code_dpt || feature.properties.dep;
                             const numCirco = feature.properties.num_circ || feature.properties.circo;
-                            const key = `${dep.padStart(2, '0')}-${numCirco}`;
+                            
+                            // Retirer le zéro devant les départements inférieurs à 10
+                            const depFormatted = dep.startsWith('0') ? dep.substring(1) : dep; // Si le département commence par 0, on le supprime
+            
+                            const key = `${depFormatted}-${numCirco}`;
                             const depute = deputeData[key];
 
                             if (depute) {
+                                // Créer un contactSection si les informations existent
+                                let contactSection = '';
+                            
+                                // Vérifier si mail, site, facebook ou twitter existent et afficher
+                                if (depute.mail || depute.siteInternet || depute.facebook || depute.twitter) {
+                                    contactSection = `
+                                        <div style="margin-top:10px; padding:8px; border:1px solid #ccc; border-radius:5px; background:#f9f9f9;">
+                                            <b>Contact :</b><br>
+                                            ${depute.mail ? `✉️ <a href="mailto:${depute.mail}">${depute.mail}</a><br>` : ''}
+                                            ${depute.siteInternet ? `🌐 <a href="${depute.siteInternet}" target="_blank">Site Internet</a><br>` : ''}
+                                            ${depute.facebook ? `📱 <a href="https://www.facebook.com/${depute.facebook}" target="_blank">Facebook</a><br>` : ''}
+                                            ${depute.twitter ? `🐦 <a href="https://x.com/${depute.twitter}" target="_blank">Twitter</a><br>` : ''}
+                                        </div>
+                                    `;
+                                }
+                            
+                                // Contenu principal de la popup
                                 const popupContent = `
                                     <b>Député :</b> ${depute.prenom} ${depute.nom}<br>
                                     <b>Groupe :</b> ${depute.groupe}<br>
-                                    <b>Mandats :</b> ${depute.nombreMandats}<br>
-                                    <b>Participation :</b> ${depute.scoreParticipation}%
+                                    <b>Mandats :</b> ${parseInt(depute.nombreMandats)}<br> <!-- Pas de décimale -->
+                                    <b>Participation :</b> ${Math.round(depute.scoreParticipation * 100)}% <!-- Score arrondi et en pourcentage -->
+                                    ${contactSection} <!-- Contact info ajoutée ici -->
                                 `;
+                                
+                                // Afficher la popup
                                 layer.bindPopup(popupContent).openPopup();
                             } else {
                                 layer.bindPopup("Pas d'info pour cette circo.").openPopup();
