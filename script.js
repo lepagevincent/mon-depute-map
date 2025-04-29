@@ -20,6 +20,22 @@ L.tileLayer('https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png
     maxZoom: 19
 }).addTo(map);
 
+
+function normalizeStringDep(str) {
+    return str.normalize("NFD")                          // Normaliser Unicode pour séparer les caractères accentués
+              .replace(/[\u0300-\u036f]/g, "")            // Retirer les accents
+              .replace(/'/g, '')                          // Supprimer les apostrophes
+              .replace(/\s+/g, '')                        // Supprimer les espaces
+ }
+
+function normalizeString(str) {
+    return str.normalize("NFD")                          // Normaliser Unicode pour séparer les caractères accentués
+              .replace(/[\u0300-\u036f]/g, "")            // Retirer les accents
+              .replace(/'/g, '')                          // Supprimer les apostrophes
+              .replace(/\s+/g, '')                        // Supprimer les espaces
+              .replace(/-/g, '');                         // Supprimer les tirets
+ }
+
 // Stockage
 let deputeData = {};
 let mairesData = {};
@@ -215,6 +231,10 @@ function loadAllLayers() {
                                     <b>Groupe :</b> ${depute.groupe}<br>
                                     <b>Mandats :</b> ${parseInt(depute.nombreMandats)}<br> 
                                     <b>Participation :</b> ${Math.round(depute.scoreParticipation * 100)}% <br>
+                                    <b>Participation :</b> ${Math.round(depute.scoreParticipation * 100)}% <br><!-- Score arrondi et en pourcentage -->
+                                    ${depute.scoreParticipationSpecialite && depute.scoreParticipationSpecialite !== 0,0 ? `<b>Participation spécialité :</b> ${Math.round(depute.scoreParticipationSpecialite * 100)}%<br>` : ''}
+                                    ${depute.scoreLoyaute && depute.scoreLoyaute !== 0.0 ? `<b>Participation loyauté :</b> ${Math.round(depute.scoreLoyaute * 100)}%<br>` : ''}
+                                    <a href="https://datan.fr/deputes/${normalizeStringDep(depute.departementNom)}-${dep}/depute_${normalizeString(depute.prenom)}-${normalizeString(depute.nom)}" target="_blank">🏛️<b> Fiche du député datan.fr</b></a>
                                     ${contactSection}
                                 `;
                                 layer.bindPopup(popupContent).openPopup();
