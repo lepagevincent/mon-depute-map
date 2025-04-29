@@ -225,12 +225,26 @@ function loadAllLayers() {
                             const depute = deputeData[key];
 
                             if (depute) {
+                                // Créer un contactSection si les informations existent
                                 let contactSection = '';
+                            
+                                // Vérifier si mail, site, facebook ou twitter existent et afficher
+                                if (depute.mail || depute.siteInternet || depute.facebook || depute.twitter) {
+                                    contactSection = `
+                                        <div style="margin-top:10px; padding:8px; border:1px solid #ccc; border-radius:5px; background:#f9f9f9;">
+                                            <b>Contact :</b><br>
+                                            ${depute.mail ? `✉️ <a href="mailto:${depute.mail}">${depute.mail}</a><br>` : ''}
+                                            ${depute.siteInternet ? `🌐 <a href="${depute.siteInternet}" target="_blank">Site Internet</a><br>` : ''}
+                                            ${depute.facebook ? `📱 <a href="https://www.facebook.com/${depute.facebook}" target="_blank">Facebook</a><br>` : ''}
+                                            ${depute.twitter ? `🐦 <a href="https://x.com/${depute.twitter}" target="_blank">Twitter</a><br>` : ''}
+                                        </div>
+                                    `;
+                                }
+                                
                                 const popupContent = `
                                     <b>Député :</b> ${depute.prenom} ${depute.nom}<br>
                                     <b>Groupe :</b> ${depute.groupe}<br>
                                     <b>Mandats :</b> ${parseInt(depute.nombreMandats)}<br> 
-                                    <b>Participation :</b> ${Math.round(depute.scoreParticipation * 100)}% <br>
                                     <b>Participation :</b> ${Math.round(depute.scoreParticipation * 100)}% <br><!-- Score arrondi et en pourcentage -->
                                     ${depute.scoreParticipationSpecialite && depute.scoreParticipationSpecialite !== 0,0 ? `<b>Participation spécialité :</b> ${Math.round(depute.scoreParticipationSpecialite * 100)}%<br>` : ''}
                                     ${depute.scoreLoyaute && depute.scoreLoyaute !== 0.0 ? `<b>Participation loyauté :</b> ${Math.round(depute.scoreLoyaute * 100)}%<br>` : ''}
