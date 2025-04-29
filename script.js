@@ -388,16 +388,21 @@ map.on('zoomend', function() {
         hideLayer(departementsLayer);
         hideLayer(circonscriptionsLayer);
         hideLayer(communesLayer);
+        map.removeControl(legend);
+
     } else if (currentZoom > 6.0 && currentZoom <= 8.0) {
         hideLayer(regionsLayer);
         showLayer(departementsLayer);
         hideLayer(circonscriptionsLayer);
         hideLayer(communesLayer);
+        map.removeControl(legend);
+        
     } else if (currentZoom >= 8.0 && currentZoom <= 9.0) {
         hideLayer(regionsLayer);
         hideLayer(departementsLayer);
         showLayer(circonscriptionsLayer);
         hideLayer(communesLayer);
+        legend.addTo(map);
     } else {
         hideLayer(regionsLayer);
         hideLayer(departementsLayer);
@@ -405,5 +410,6 @@ map.on('zoomend', function() {
         if (!map.hasLayer(communesLayer)) {
             showLayer(communesLayer); // Charger la couche des communes seulement si elle n'est pas déjà ajoutée
         }
+        map.removeControl(legend);
     }
 });
