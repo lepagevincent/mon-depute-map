@@ -347,6 +347,37 @@ function resetHighlight(e) {
     });
 }
 
+// Légende politique
+let legend = L.control({ position: 'bottomright' });
+legend.onAdd = function (map) {
+    let div = L.DomUtil.create('div', 'info legend');
+    const parties = {
+        'RN': '#0055A4',
+        'LFI': '#D32F2F',
+        'SOC': '#F06292',
+        'ECOS': '#4CAF50',
+        'HOR': '#FF9800',
+        'DEM': '#FFEB3B',
+        'DR': '#1A237E',
+        'EPR': '#6D4C41',
+        'GDR': '#C62828',
+        'LIOT': '#8D6E63',
+        'NI': '#90A4AE',
+        'UDR': '#64B5F6'
+    };
+    for (const [party, color] of Object.entries(parties)) {
+        div.innerHTML += `
+            <i style="background:${color}; width:18px; height:18px; float:left; margin-right:8px; opacity:0.7;"></i> 
+            ${party}<br>
+        `;
+    }
+    return div;
+ 
+
+};
+ 
+
+
 // Zoom dynamique
 map.on('zoomend', function() {
     const currentZoom = map.getZoom();
