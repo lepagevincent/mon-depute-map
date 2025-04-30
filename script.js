@@ -69,9 +69,10 @@ fetch('data/maires_for_communes_layer.csv')
     .then(text => {
         const rows = text.split('\n');
         const headers = rows[0].split(',');
-
+        
         rows.slice(1).forEach(row => {
             const columns = row.split(',');
+            if (columns.length < 2) return;
             const communeName = columns[0].trim();
             const codeCommune = columns[1].trim();
             const nomElu = columns[2].trim();
@@ -152,7 +153,6 @@ function loadAllLayers() {
                             map.flyToBounds(layer.getBounds(), { maxZoom: 8 });
                             hideLayer(regionsLayer);
                             showLayer(departementsLayer);
-                            forceResetHover();
                         },
                         mouseover: highlightFeature,
                         mouseout: resetHighlight
@@ -174,7 +174,6 @@ function loadAllLayers() {
                             map.flyToBounds(layer.getBounds(), { maxZoom: 9 });
                             hideLayer(departementsLayer);
                             showLayer(circonscriptionsLayer);
-                            forceResetHover();
                         },
                         mouseover: highlightFeature,
                         mouseout: resetHighlight
@@ -240,14 +239,14 @@ function loadAllLayers() {
                                         </div>
                                     `;
                                 }
-                                
                                 const popupContent = `
                                     <b>Député :</b> ${depute.prenom} ${depute.nom}<br>
                                     <b>Groupe :</b> ${depute.groupe}<br>
                                     <b>Mandats :</b> ${parseInt(depute.nombreMandats)}<br>
                                     
                                     <b>Participation :</b> ${Math.round(depute.scoreParticipation * 100)}% <br><!-- Score arrondi et en pourcentage -->
-                                    ${depute.scoreParticipationSpecialite && depute.scoreParticipationSpecialite !== 0,0 ? `<b>Participation spécialité :</b> ${Math.round(depute.scoreParticipationSpecialite * 100)}%<br>` : ''}
+                                    ${depute.scoreParticipationSpecialite && depute.scoreParticipationSpecialite !== 0.0 ? `<b>Participation spécialité :</b> ${Math.round(depute.scoreParticipationSpecialite * 100)}%<br>` : ''}
+                                    
                                     ${depute.scoreLoyaute && depute.scoreLoyaute !== 0.0 ? `<b>Participation loyauté :</b> ${Math.round(depute.scoreLoyaute * 100)}%<br>` : ''}
                                     
                                     <a href="https://datan.fr/deputes/${normalizeStringDep(depute.departementNom)}-${dep}/depute_${normalizeString(depute.prenom)}-${normalizeString(depute.nom)}" target="_blank">🏛️<b> Fiche du député datan.fr</b></a>
@@ -372,16 +371,13 @@ legend.onAdd = function (map) {
         `;
     }
     return div;
- 
 
 };
- 
 
 
 // Zoom dynamique
 map.on('zoomend', function() {
     const currentZoom = map.getZoom();
-    console.log(currentZoom);
 
     if (currentZoom <= 6.0) {
         showLayer(regionsLayer);
