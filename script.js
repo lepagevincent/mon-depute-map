@@ -39,6 +39,7 @@ function normalizeString(str) {
 // Stockage
 let deputeData = {};
 let mairesData = {};
+let politiqueData = {};
 let regionsLayer, departementsLayer, circonscriptionsLayer, communesLayer;
 
 // Charger les données députés
@@ -63,6 +64,26 @@ Papa.parse('data/deputes-active-corrected.csv', {
     }
 });
 
+fetch('data/rne-enrichi-couleur-politique.csv')
+  .then(res => res.text())
+  .then(text => {
+    const rows = text.split('\n').filter(row => row.trim() !== '');
+    const headers = rows[0].split(',');
+
+    rows.slice(1).forEach(row => {
+      const cols = row.split(',');
+      if (cols.length < 5) return;
+      const codeCommune = cols[1].trim();
+      const nuance = cols[3]?.trim() || 'NC';
+      const famille = cols[4]?.trim() || 'Non classé';
+
+      politiqueData[codeCommune] = {
+        nuance,
+        famille
+      };
+    });
+  });
+
 // Charger les données des maires
 fetch('data/maires_for_communes_layer.csv')
     .then(res => res.text())
@@ -78,12 +99,13 @@ fetch('data/maires_for_communes_layer.csv')
             const nomElu = columns[2].trim();
             const prenomElu = columns[3].trim();
             const debutMandat = columns[4].trim();
-
+            const politique = politiqueData[codeCommune] || {};
             mairesData[codeCommune] = {
                 communeName,
                 nomElu,
                 prenomElu,
-                debutMandat
+                debutMandat,
+                politique,
             };
         });
     });
@@ -91,20 +113,25 @@ fetch('data/maires_for_communes_layer.csv')
 // Fonction pour afficher les informations des élus dans un popup lors du clic sur une commune
 function onEachFeatureCommune(feature, layer) {
     
+    const codeCommune = feature.properties.code;
+    
+    // Appliquer la couleur selon la famille politique (si présente dans les propriétés)
+    const famille = mairesData[codeCommune]?.politique?.famille || 'Non classé';
+    layer.setStyle(styleFeature(famille));
     storeOriginalStyle(layer);
 
     // Ajouter les événements de survol et de clic
     layer.on({
         click: (e) => {                 // Lorsque la commune est cliquée
-            console.log(feature);
             const codeCommune = feature.properties.code;
             const maire = mairesData[codeCommune];
-            console.log(maire);
             if (maire) {
                 const popupContent = `
                     <b>Commune :</b> ${maire.communeName} <br>
                     <b>Nom de l'élu :</b> ${maire.nomElu} ${maire.prenomElu} <br>
                     <b>Date de début du mandat :</b> ${maire.debutMandat} <br>
+                    <b>Famille politique :</b> ${maire.politique.famille} <br>
+                    <b>Parti politique :</b> ${maire.politique.nuance} <br>
                 `;
                 layer.bindPopup(popupContent).openPopup();
             } else {
@@ -137,6 +164,30 @@ function getGroupColor(groupeAbrev) {
         default: return '#B0BEC5';
     }
 }
+
+function getColorByFamille(famille) {
+    switch (famille) {
+      case 'Gauche': return '#e74c3c';
+      case 'Droite': return '#3498db';
+      case 'Centre': return '#f1c40f';
+      case 'Extrême droite': return '#8e44ad';
+      case 'Extrême gauche': return '#c0392b';
+      case 'Écologiste': return '#27ae60';
+      case 'Régionaliste': return '#e67e22';
+      case 'Divers': return '#95a5a6';
+      default: return '#bdc3c7'; // Non classé ou inconnu
+    }
+  }
+  
+  function styleFeature(famille) {
+    return {
+      fillColor: getColorByFamille(famille),
+      weight: 1,
+      opacity: 1,
+      color: 'white',
+      fillOpacity: 0.7
+    };
+  }
 
 // Charger toutes les couches (regions, departements, circonscriptions) et gérer les communes
 function loadAllLayers() {
@@ -270,12 +321,6 @@ function loadAllLayers() {
         .then(res => res.json())
         .then(data => {
             communesLayer = L.geoJSON(data, {
-                style: { 
-                    color: "#FF6347",   
-                    weight: 1,          
-                    opacity: 0.7,
-                    fillOpacity: 0.3    
-                },
                 onEachFeature: onEachFeatureCommune
             })
         })
@@ -346,7 +391,33 @@ function resetHighlight(e) {
     });
 }
 
-// Légende politique
+// Légende commune
+
+let communeLegend = L.control({ position: 'bottomright' }); // 👈 change la position si besoin
+
+communeLegend.onAdd = function (map) {
+  const div = L.DomUtil.create('div', 'info legend');
+  const familles = [
+    'Gauche',
+    'Droite',
+    'Centre',
+    'Extrême gauche',
+    'Extrême droite',
+    'Écologiste',
+    'Régionaliste',
+    'Divers',
+    'Non classé'
+  ];
+
+  familles.forEach(famille => {
+    const color = getColorByFamille(famille);
+    div.innerHTML += `<i style="background:${color}; width:14px; height:14px; display:inline-block; margin-right:8px; border-radius:2px;"></i>${famille}<br>`;
+  });
+
+  return div;
+};
+
+// Légende Circo
 let legend = L.control({ position: 'bottomright' });
 legend.onAdd = function (map) {
     let div = L.DomUtil.create('div', 'info legend');
@@ -378,20 +449,24 @@ legend.onAdd = function (map) {
 // Zoom dynamique
 map.on('zoomend', function() {
     const currentZoom = map.getZoom();
-
+    console.log(currentZoom);
     if (currentZoom <= 6.0) {
         showLayer(regionsLayer);
         hideLayer(departementsLayer);
         hideLayer(circonscriptionsLayer);
         hideLayer(communesLayer);
         map.removeControl(legend);
+        map.removeControl(communeLegend);
 
-    } else if (currentZoom > 6.0 && currentZoom <= 8.0) {
+
+    } else if (currentZoom > 6.0 && currentZoom <= 7.9) {
         hideLayer(regionsLayer);
         showLayer(departementsLayer);
         hideLayer(circonscriptionsLayer);
         hideLayer(communesLayer);
         map.removeControl(legend);
+        map.removeControl(communeLegend);
+
         
     } else if (currentZoom >= 8.0 && currentZoom <= 9.0) {
         hideLayer(regionsLayer);
@@ -399,6 +474,8 @@ map.on('zoomend', function() {
         showLayer(circonscriptionsLayer);
         hideLayer(communesLayer);
         legend.addTo(map);
+        map.removeControl(communeLegend);
+
     } else {
         hideLayer(regionsLayer);
         hideLayer(departementsLayer);
@@ -407,5 +484,7 @@ map.on('zoomend', function() {
             showLayer(communesLayer); // Charger la couche des communes seulement si elle n'est pas déjà ajoutée
         }
         map.removeControl(legend);
+        communeLegend.addTo(map);
     }
 });
+
